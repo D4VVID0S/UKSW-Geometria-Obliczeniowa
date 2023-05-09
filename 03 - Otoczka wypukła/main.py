@@ -191,7 +191,7 @@ def check_if_one_coordinate_is_identical(hull):
 def check_hull_is_triangle(hull):
     x = list(set([p[0] for p in hull]))
     y = list(set([p[1] for p in hull]))
-    return (len(x) == 2 or len(y) == 2) and len(hull) > 2
+    return (len(x) == 2 or len(y) == 2) and len(hull) == 3
         
 
 def draw_text(text):
