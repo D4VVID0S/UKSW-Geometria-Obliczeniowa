@@ -1,7 +1,7 @@
 # Otoczka wypukła algorytmem Jarvisa (gift wrap)
 
 Zainstaluj zalezności z pliku requirements.txt
-`pip install -r requirements`
+`pip install -r requirements.txt`
 
 Uruchomienie programu
 `python main.py -r`
