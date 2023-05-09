@@ -36,6 +36,6 @@ options:
 
 ### Ograniczenia
 - punkty muszą znajdowac się w pierwszej cwiartce układu współrzędnych
-- zakres wartości dla x to [0, 600], a y to [0, 700]
+- zakres wartości dla x to [0, 800], a y to [0, 500]
 - maksymalna liczba punktów wynosi 4
 - mimo, ze punkty będą w pierwszej cwiartce to ich prezentacja w programie jest lustrzanym odbiciem względem osi OX (wartośc y równa 0 znajduje się u góry, wartośc graniczna y znajduje się na dole ekranu)
