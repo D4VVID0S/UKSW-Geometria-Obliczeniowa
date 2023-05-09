@@ -166,17 +166,32 @@ def draw_hull(hull, color, line_width=1):
         
         pygame.time.wait(300)
         
-    points_in_hull = len(hull)
-    if points_in_hull == 1:
+    if check_if_hull_points_have_identical_coordinates(hull):
         draw_text("Otoczka wypukła jest punktem.")
-    elif points_in_hull == 2:
+    elif check_if_one_coordinate_is_identical(hull):
         draw_text("Otoczka wypukła jest linią.")
-    elif points_in_hull == 3:
+    elif check_hull_is_triangle(hull):
         draw_text("Otoczka wypukła jest trójkątem.")
     else:
         draw_text(f"Otoczka wypukła jest czworokątem.")
     
     draw_text(f"Otoczka wypukła została narysowana. Punkty {hull}")
+    
+    
+def check_if_hull_points_have_identical_coordinates(hull):
+    return len(set(hull)) == 1
+
+
+def check_if_one_coordinate_is_identical(hull):
+    x = list(set([p[0] for p in hull]))
+    y = list(set([p[1] for p in hull]))
+    return (len(x) == 1 or len(y) == 1) and len(hull) > 1
+
+
+def check_hull_is_triangle(hull):
+    x = list(set([p[0] for p in hull]))
+    y = list(set([p[1] for p in hull]))
+    return (len(x) == 2 or len(y) == 2) and len(hull) > 2
         
 
 def draw_text(text):
