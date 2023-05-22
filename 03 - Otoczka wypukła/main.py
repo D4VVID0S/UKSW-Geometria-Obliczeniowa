@@ -2,6 +2,7 @@ import pygame
 import random
 
 import logging 
+import math
 
 logger = logging.getLogger(__name__)
 file_handler = logging.FileHandler("log.txt")
@@ -49,7 +50,35 @@ drawing_surface = pygame.Surface(drawing_rect.size)
 drawing_surface.fill(white)
 
 # ustawienia punktów
-num_points = 4
+num_points = 5
+
+
+
+def calculate_distance_between_two_points(point1, point2):
+    return math.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2)
+
+class Segment:
+    def __init__(self, start: tuple, end: tuple) -> None:
+        if not (isinstance(start, tuple) and isinstance(end, tuple)):
+            raise TypeError("Values must be tuples")
+        if not (len(start) == 2 and len(end) == 2):
+            raise ValueError("Points needs to have to two values")
+        self.start = start
+        self.end = end
+    
+    def __eq__(self, __o: object) -> bool:
+        if not isinstance(__o, Segment):
+            raise TypeError("Objects cannot be compared")
+        return (self.start == __o.start and self.end == __o.end) or (self.start == __o.end and self.end == __o.start)
+
+    def __ne__(self, __o: object) -> bool:
+        return not (self == __o)
+    
+    def __hash__(self) -> int:
+        return (self.start, self.end).__hash__()
+    
+    def __repr__(self) -> str:
+        return f"<Odcinek: {self.start}, {self.end}>"
 
 
 def get_orientation(p, q, r):
@@ -88,23 +117,35 @@ def find_lowest_y_or_highest_x_iterative(n, points, primary_color, secondary_col
 def gift_wrap(points):
     n = len(points)
     hull = []
+    segments = set()
 
     start = find_lowest_y_or_highest_x_iterative(n, points, green, orange)
 
     while True:
+        print("\n\n")
         hull.append(start)
         draw_text(f"Sprawdzam linie dla punktu {points[start]}...")
         end = (start + 1) % n
+        longest_distance = 0
+        longest_distance_to_point = None
         for i in range(n):
+            
+            if i == end or i == start:
+                continue
+            
             pygame.draw.circle(drawing_surface, orange, points[start], 4)
             pygame.draw.circle(drawing_surface, pink, points[i], 4)
             pygame.draw.circle(drawing_surface, orange, points[end], 4)
-            draw_text(f"Sprawdzam orientację punktu {points[i]} względem punktu {points[start]}.")
+            draw_text(f"Sprawdzam orientację punktu {points[i]} względem odcinka {points[start]} - {points[end]}.")
             
             pygame.draw.line(drawing_surface, pink, points[start], points[i], 1)
             
-            orientation = get_orientation(points[start], points[i], points[end])
-            print("Orientation:", orientation)
+            orientation = get_orientation(points[start], points[end], points[i])
+            distance = calculate_distance_between_two_points(points[start], points[i])
+            if distance > longest_distance:
+                longest_distance_to_point = i
+                longest_distance = distance
+            print(f"{orientation=}; {distance=}; {longest_distance_to_point=}")
             refresh_drawing_surface()
             pygame.time.wait(300)
             
@@ -114,10 +155,14 @@ def gift_wrap(points):
                 draw_text(f"Punkt {points[i]} jest po lewej stronie wektora {points[start]} - {points[end]}.")
                 pygame.draw.line(drawing_surface, blue, points[start], points[i], 1)
                 end = i
-            else:
+                
+            elif orientation > 0:
                 draw_text(f"Punkt {points[i]} jest po prawej stronie wektora {points[start]} - {points[end]}.")
                 pygame.draw.line(drawing_surface, white, points[start], points[i], 1)
-                
+            else:
+                draw_text(f"Punkt {points[i]} jest współliniowy dla odcinka {points[start]} - {points[end]}.")
+                pygame.draw.line(drawing_surface, white, points[start], points[i], 1)
+
             refresh_drawing_surface()
             pygame.time.wait(300)
             
@@ -129,8 +174,12 @@ def gift_wrap(points):
             
         pygame.draw.circle(drawing_surface, black, points[start], 4)
         pygame.draw.line(drawing_surface, green, points[start], points[end], 1)
-            
-        draw_text(f"Dla punktu {points[start]} wybrano punkt {points[end]}.")
+        
+        segment = Segment(points[start], points[end])
+        segments.add(segment)
+        
+        print(f"Odcinki: {segments}")
+        
         start = end
         if start == hull[0]:
             pygame.draw.circle(drawing_surface, (0,0,255), points[start], 4)
@@ -152,7 +201,8 @@ def draw_points(points):
 # rysowanie otoczki wypukłej
 def draw_hull(hull, color, line_width=1):
     draw_text("Rysuję otoczkę wypukłą...")
-    if len(hull) <= 1:
+    draw_text(f"Punkty otoczki: {hull}")
+    if len(hull) <= 0:
         return
     for i in range(len(hull)):
         start = i
@@ -165,36 +215,20 @@ def draw_hull(hull, color, line_width=1):
         refresh_drawing_surface()
         
         pygame.time.wait(300)
-        
-    if check_if_hull_points_have_identical_coordinates(hull):
+    
+    if len(hull) == 1:
         draw_text("Otoczka wypukła jest punktem.")
-    elif check_if_one_coordinate_is_identical(hull):
-        draw_text("Otoczka wypukła jest linią.")
-    elif check_hull_is_triangle(hull):
-        draw_text("Otoczka wypukła jest trójkątem.")
+    elif len(hull) == 2:
+        draw_text("Otoczka wypukła jest odcinkiem.")
     else:
-        draw_text(f"Otoczka wypukła jest czworokątem.")
+        draw_text(f"Otoczka wypukła jest {len(hull)}-kątem.")
     
     draw_text(f"Otoczka wypukła została narysowana. Punkty {hull}")
     
-    
-def check_if_hull_points_have_identical_coordinates(hull):
-    return len(set(hull)) == 1
-
-
-def check_if_one_coordinate_is_identical(hull):
-    x = list(set([p[0] for p in hull]))
-    y = list(set([p[1] for p in hull]))
-    return (len(x) == 1 or len(y) == 1) and len(hull) > 1
-
-
-def check_hull_is_triangle(hull):
-    x = list(set([p[0] for p in hull]))
-    y = list(set([p[1] for p in hull]))
-    return (len(x) == 2 or len(y) == 2) and len(hull) == 3
         
 
 def draw_text(text):
+    print(text)
     logger.info(text)
     text_surface = font.render(text, True, black)
     text_rect = text_surface.get_rect()
@@ -230,7 +264,7 @@ def main(points):
         
         draw_text("Generowanie punktów...")
         
-        if len(points) > 4:
+        if len(points) > num_points:
             draw_text("Zbyt dużo punktów. Wybierz mniej niż 5.")
             break
 
@@ -242,7 +276,7 @@ def main(points):
 
         # wizualizacja algorytmu Jarvisa
         jarvis_hull = gift_wrap(points)
-        draw_hull(jarvis_hull, red)
+        draw_hull(list(set(jarvis_hull)), red)
         
         while finished:
             pygame.time.wait(100)
