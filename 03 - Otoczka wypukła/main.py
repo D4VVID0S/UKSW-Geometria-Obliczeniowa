@@ -267,7 +267,7 @@ def main(points):
                         WAIT_TIME = WAIT_TIME - 50 if WAIT_TIME > 50 else 50
                         draw_text(f"Zmieniono czas oczekiwania na {WAIT_TIME} ms.")
                     if event.key == pygame.K_l:
-                        WAIT_TIME = WAIT_TIME + 50 if WAIT_TIME < 1000 else 10000
+                        WAIT_TIME = WAIT_TIME + 50 if WAIT_TIME < 10000 else 10000
                         draw_text(f"Zmieniono czas oczekiwania na {WAIT_TIME} ms.")
                 elif event.type == pygame.QUIT:
                     running = False
