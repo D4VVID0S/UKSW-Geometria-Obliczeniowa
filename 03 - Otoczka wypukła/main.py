@@ -11,6 +11,8 @@ file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 logger.setLevel(logging.INFO)
 
+WAIT_TIME = 250
+
 pygame.init()
 
 # ustawienia okna
@@ -53,168 +55,138 @@ drawing_surface.fill(white)
 num_points = 5
 
 
-
 def calculate_distance_between_two_points(point1, point2):
     return math.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2)
 
-class Segment:
-    def __init__(self, start: tuple, end: tuple) -> None:
-        if not (isinstance(start, tuple) and isinstance(end, tuple)):
-            raise TypeError("Values must be tuples")
-        if not (len(start) == 2 and len(end) == 2):
-            raise ValueError("Points needs to have to two values")
-        self.start = start
-        self.end = end
-    
-    def __eq__(self, __o: object) -> bool:
-        if not isinstance(__o, Segment):
-            raise TypeError("Objects cannot be compared")
-        return (self.start == __o.start and self.end == __o.end) or (self.start == __o.end and self.end == __o.start)
 
-    def __ne__(self, __o: object) -> bool:
-        return not (self == __o)
-    
-    def __hash__(self) -> int:
-        return (self.start, self.end).__hash__()
-    
-    def __repr__(self) -> str:
-        return f"<Odcinek: {self.start}, {self.end}>"
-
-
-def get_orientation(p, q, r):
+def get_orientation(segment, r):
+    p, q = segment
     # zwraca wartość > 0, jeśli p->q->r skręca w lewo (w lewo od wektora pq)
     # wartość < 0, jeśli p->q->r skręca w prawo (w prawo od wektora pq)
     # wartość == 0, jeśli punkty są współliniowe
     # funkcja pomocnicza do obliczenia orientacji względem kolejnych punktów
-    return (q[1]-p[1])*(r[0]-q[0]) - (q[0]-p[0])*(r[1]-q[1])
-
+    result = (q[1]-p[1])*(r[0]-q[0]) - (q[0]-p[0])*(r[1]-q[1])
+    if result == 0:
+        print("Punkty są współliniowe", result)
+    elif result > 0:
+        print("Punkty skręcają w lewo", result)
+    else:
+        print("Punkty skręcają w prawo", result)
+    return result
+        
 
 def refresh_drawing_surface(): 
     screen.blit(drawing_surface, drawing_rect)
     screen.blit(log_surface, (0, screen_height - LOG_HEIGHT))
     pygame.display.flip()
     
-    
-def find_lowest_y_or_highest_x_iterative(n, points, primary_color, secondary_color):
-    draw_text("Wyszukiwanie punktu o najmniejszej współrzędnej y lub o największej x...")
-    print("Finding lowest y or highest x")
-    
-    start = 0
-    point = pygame.draw.circle(drawing_surface, secondary_color, points[start], 4)
-    drawn_elements.append(point)
-    
-    for i in range(1, n):
-        if points[i][1] < points[start][1] or (points[i][1] == points[start][1] and points[i][0] > points[start][0]):
-            pygame.draw.circle(drawing_surface, primary_color, points[start], 4)
-            start = i
-            pygame.draw.circle(drawing_surface, secondary_color, points[start], 4)
-        draw_text(f"Wybrany punkt {points[start]} - sprawdzany punkt {points[i]}")
-        pygame.time.wait(300)
-    pygame.draw.circle(drawing_surface, primary_color, points[start], 4)
-    return start
+
+def find_point_with_max_x(points):
+    max_x = None
+    max_x_idx = 0
+    for idx, point in enumerate(points):
+        if idx == 0:
+            max_x = point[max_x_idx]
+            continue
+        if point[0] > max_x:
+            max_x = point[0]
+            max_x_idx = idx
+    return max_x_idx
 
 
-def gift_wrap(points):
-    n = len(points)
+def jarvis(points):        
+    index_of_point_with_max_x = find_point_with_max_x(points)
+    selected_point_idx = index_of_point_with_max_x
     hull = []
-    segments = set()
-
-    start = find_lowest_y_or_highest_x_iterative(n, points, green, orange)
-
+    hull_idx = 0
+    selected_point = points[selected_point_idx]
     while True:
-        print("\n\n")
-        hull.append(start)
-        draw_text(f"Sprawdzam linie dla punktu {points[start]}...")
-        end = (start + 1) % n
-        longest_distance = 0
-        longest_distance_to_point = None
-        for i in range(n):
+        draw_text(f"Wyszukuję punkt dla {selected_point}...")
+        hull.append(selected_point)
+        next_point = points[0]
+        
+        for point in points:
+            draw_text(f"Sprawdzam punkt {point}...")
             
-            if i == end or i == start:
-                continue
-            
-            pygame.draw.circle(drawing_surface, orange, points[start], 4)
-            pygame.draw.circle(drawing_surface, pink, points[i], 4)
-            pygame.draw.circle(drawing_surface, orange, points[end], 4)
-            draw_text(f"Sprawdzam orientację punktu {points[i]} względem odcinka {points[start]} - {points[end]}.")
-            
-            pygame.draw.line(drawing_surface, pink, points[start], points[i], 1)
-            
-            orientation = get_orientation(points[start], points[end], points[i])
-            distance = calculate_distance_between_two_points(points[start], points[i])
-            if distance > longest_distance:
-                longest_distance_to_point = i
-                longest_distance = distance
-            print(f"{orientation=}; {distance=}; {longest_distance_to_point=}")
+            original_next_point = next_point
+            draw_segment((selected_point, next_point), pink, orange)
+            pygame.draw.circle(drawing_surface, pink, point, 4)
             refresh_drawing_surface()
-            pygame.time.wait(300)
+            pygame.time.wait(WAIT_TIME)
             
-            pygame.draw.line(drawing_surface, white, points[start], points[i], 1)
+            draw_text(f"Sprawdzam orientację dla punktu {point} względem odcinka [{selected_point}, {next_point}]...")
             
-            if orientation < 0:
-                draw_text(f"Punkt {points[i]} jest po lewej stronie wektora {points[start]} - {points[end]}.")
-                pygame.draw.line(drawing_surface, blue, points[start], points[i], 1)
-                end = i
-                
-            elif orientation > 0:
-                draw_text(f"Punkt {points[i]} jest po prawej stronie wektora {points[start]} - {points[end]}.")
-                pygame.draw.line(drawing_surface, white, points[start], points[i], 1)
+            if next_point != hull[hull_idx] and get_orientation((selected_point, next_point), point) > 0:
+                next_point = point
+                draw_text(f"Kandydat {next_point} na podstawie orientacji względem odcinka [{selected_point}, {next_point}].")
+            elif get_orientation((selected_point, next_point), point) == 0:
+                draw_text(f"Sprawdzam odległość dla punktu {point}...")
+                if calculate_distance_between_two_points(selected_point, next_point) < calculate_distance_between_two_points(selected_point, point):
+                    next_point = point
+                    draw_text(f"Kandydat {next_point} na podstawie odległości od {selected_point}.")
+                else:
+                    draw_text(f"Punkt {point} nie spełnia warunków.")
             else:
-                draw_text(f"Punkt {points[i]} jest współliniowy dla odcinka {points[start]} - {points[end]}.")
-                pygame.draw.line(drawing_surface, white, points[start], points[i], 1)
-
+                draw_text(f"Punkt {point} nie spełnia warunków.")
+                
+            draw_segment((selected_point, original_next_point), white, black)
+            draw_segment((selected_point, next_point), white, orange)
+            pygame.draw.circle(drawing_surface, black, point, 4)
             refresh_drawing_surface()
-            pygame.time.wait(300)
+            pygame.time.wait(WAIT_TIME)
             
-            pygame.draw.circle(drawing_surface, black, points[i], 4)
-            pygame.draw.circle(drawing_surface, black, points[end], 4)
-            
-            refresh_drawing_surface()
-            pygame.time.wait(300)
-            
-        pygame.draw.circle(drawing_surface, black, points[start], 4)
-        pygame.draw.line(drawing_surface, green, points[start], points[end], 1)
+        hull_idx += 1
         
-        segment = Segment(points[start], points[end])
-        segments.add(segment)
+        draw_segment((selected_point, next_point), green, orange)
+        draw_segment((selected_point, next_point), white, black)
         
-        print(f"Odcinki: {segments}")
+        selected_point = next_point
         
-        start = end
-        if start == hull[0]:
-            pygame.draw.circle(drawing_surface, (0,0,255), points[start], 4)
-            refresh_drawing_surface()
-            pygame.time.wait(300)
+        draw_text(f"Wybrano punkt {selected_point} jako kolejny punkt na obwodzie otoczki.")
+        
+        if next_point == hull[0]:
+            draw_text("Znaleziono punkt początkowy - koniec.")
             break
+        
+    return hull
 
-    return [points[i] for i in hull]
 
+def draw_segment(segment, segment_color, point_color):
+    selected_point, next_point = segment
+    pygame.draw.line(drawing_surface, segment_color, selected_point, next_point, 1)
+    pygame.draw.circle(drawing_surface, point_color, selected_point, 4)
+    pygame.draw.circle(drawing_surface, point_color, next_point, 4)
+    refresh_drawing_surface()
+    pygame.time.wait(WAIT_TIME)
+    
 
 # rysowanie punktów
 def draw_points(points):
     for p in points:
         pygame.draw.circle(drawing_surface, black, p, 4)
         refresh_drawing_surface()
-        pygame.time.wait(300)
+        pygame.time.wait(WAIT_TIME)
 
 
 # rysowanie otoczki wypukłej
-def draw_hull(hull, color, line_width=1):
+def draw_hull(hull, color=red, line_width=1):
     draw_text("Rysuję otoczkę wypukłą...")
     draw_text(f"Punkty otoczki: {hull}")
     if len(hull) <= 0:
         return
     for i in range(len(hull)):
-        start = i
-        end = (i+1) % len(hull)
-        print(f"Drawing line from {start} - {hull[start]} to {end} - {hull[end]}")
-        draw_text(f"Rysuję linię z punktu {hull[start]} do punktu {hull[end]}...")
-        line = pygame.draw.line(drawing_surface, color, hull[start], hull[end], line_width)
+        if len(hull) == 2 and i == 1:
+            draw_text("Pomijam rysowanie ostatniego odcineka, bo jest identyczny z pierwszym.")
+            continue
+        current_point = hull[i]
+        next_point = hull[(i+1) % len(hull)]
+        print(f"Drawing line from {current_point} to {next_point}")
+        draw_text(f"Rysuję linię z punktu {current_point} do punktu {next_point}...")
+        line = pygame.draw.line(drawing_surface, color, current_point, next_point, line_width)
         drawn_elements.append(line)
         # wyświetlenie zawartości ekranu
         refresh_drawing_surface()
-        
-        pygame.time.wait(300)
+        pygame.time.wait(WAIT_TIME)
     
     if len(hull) == 1:
         draw_text("Otoczka wypukła jest punktem.")
@@ -223,7 +195,7 @@ def draw_hull(hull, color, line_width=1):
     else:
         draw_text(f"Otoczka wypukła jest {len(hull)}-kątem.")
     
-    draw_text(f"Otoczka wypukła została narysowana. Punkty {hull}")
+    draw_text(f"Otoczka wypukła została narysowana. Punkty {hull}.")
     
         
 
@@ -257,9 +229,10 @@ def clear_screen():
     
 def main(points):
     running = True
-    finished = True
+    global WAIT_TIME
     
     while running:
+        finished = False
         clear_screen()
         
         draw_text("Generowanie punktów...")
@@ -275,10 +248,31 @@ def main(points):
         pygame.display.flip()
 
         # wizualizacja algorytmu Jarvisa
-        jarvis_hull = gift_wrap(points)
-        draw_hull(list(set(jarvis_hull)), red)
+        jarvis_hull = jarvis(points)
+        draw_hull(jarvis_hull, red)
         
-        while finished:
+        draw_text("Naciśnij ENTER, aby uruchomić ponownie.")
+        draw_text("Naciśnij ESC lub Q, aby zakończyć.")
+        draw_text("Naciśnij K lub L, aby zmniejszyć lub zwiększyść szybkość animacji.")
+        
+        while not finished:
+            for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN:
+                    if event.key in [pygame.K_ESCAPE, pygame.K_q]:
+                        running = False
+                        finished = True
+                    if event.key == pygame.K_RETURN:
+                        finished = True
+                    if event.key == pygame.K_k:
+                        WAIT_TIME = WAIT_TIME - 50 if WAIT_TIME > 50 else 50
+                        draw_text(f"Zmieniono czas oczekiwania na {WAIT_TIME} ms.")
+                    if event.key == pygame.K_l:
+                        WAIT_TIME = WAIT_TIME + 50 if WAIT_TIME < 1000 else 10000
+                        draw_text(f"Zmieniono czas oczekiwania na {WAIT_TIME} ms.")
+                elif event.type == pygame.QUIT:
+                    running = False
+                    finished = True
+            
             pygame.time.wait(100)
 
     pygame.quit()
