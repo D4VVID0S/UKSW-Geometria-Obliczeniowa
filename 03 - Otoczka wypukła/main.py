@@ -292,6 +292,7 @@ if __name__ == "__main__":
     if args.random:
         points = generate_random_points(num_points)
     elif args.numbers:
+        args.numbers = args.numbers.replace(' ', '')
         points = [tuple(map(int, x.split(','))) for x in args.numbers.strip('()').split('),(')]
     else:
         sys.exit("Nie podano argumentów. Użyj -h lub --help, aby uzyskać pomoc.")
